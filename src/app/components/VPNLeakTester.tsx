@@ -408,7 +408,7 @@ const VPNLeakTester: React.FC = () => {
     }
   };
 
-   // Modify runTests to include all tests
+  // Modify runTests to include all tests
   const runAllTests = async () => {
     setIsRunning(true);
     setLogs([]);
@@ -422,11 +422,11 @@ const VPNLeakTester: React.FC = () => {
     setRunAdvancedTests(true);
   };
 
-    // Handle advanced tests completion
-    const handleAdvancedTestsComplete = () => {
-      setIsRunning(false);
-      addLog('All tests completed');
-    };
+  // Handle advanced tests completion
+  const handleAdvancedTestsComplete = () => {
+    setIsRunning(false);
+    addLog('All tests completed');
+  };
 
   // Run all tests
   const runTests = async () => {
@@ -587,18 +587,6 @@ const VPNLeakTester: React.FC = () => {
         </div>
       )}
 
-      {/* Keep only this one logs section */}
-      {logs.length > 0 && (
-        <div className="mb-6 p-4 bg-black rounded-lg">
-          <h3 className="font-mono text-white mb-2 uppercase tracking-wide">Test Logs</h3>
-          <div className="font-mono text-xs space-y-1 max-h-[300px] overflow-y-auto">
-            {logs.map((log: string, index: number) => (
-              <div key={index} className="text-gray-300">{log}</div>
-            ))}
-          </div>
-        </div>
-      )}
-
 
       <div className="space-y-4 mb-6">
         <AdvancedNetworkTests
@@ -613,13 +601,26 @@ const VPNLeakTester: React.FC = () => {
         onClick={runAllTests}
         disabled={isRunning}
         className={cn(
-          "w-full px-4 py-2 font-mono uppercase tracking-wider text-white bg-black",
+          "w-full mb-6 px-4 py-2 font-mono uppercase tracking-wider text-white bg-black",
           "rounded-md transition-colors duration-200",
           "hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
         )}
       >
         {isRunning ? 'Running All Tests...' : 'Start Complete VPN Test'}
       </button>
+
+      {/* Keep only this one logs section */}
+      {logs.length > 0 && (
+        <div className="mb-6 p-4 bg-black rounded-lg">
+          <h3 className="font-mono text-white mb-2 uppercase tracking-wide">Test Logs</h3>
+          <div className="font-mono text-xs space-y-1 max-h-[300px] overflow-y-auto">
+            {logs.map((log: string, index: number) => (
+              <div key={index} className="text-gray-300">{log}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

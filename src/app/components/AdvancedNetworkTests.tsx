@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,6 @@ interface TestResult {
 
 interface AdvancedTestState {
     timezone: TestResult;
-    browser: TestResult;
     network: TestResult;
     fingerprint: TestResult;
     traffic: TestResult;
@@ -29,28 +28,28 @@ interface AdvancedNetworkTestsProps {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Enhanced fetch with no-cors mode and better error handling
-// Enhanced fetch helper with better error handling and request management
 const safeFetch = async (url: string, options: RequestInit = {}) => {
-    const defaultOptions: RequestInit = {
-        mode: 'no-cors' as RequestMode,
-        credentials: 'omit',
-        cache: 'no-cache'
-    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const finalOptions: RequestInit = {
-        ...defaultOptions,
-        ...options,
-        mode: 'no-cors' as RequestMode // Ensure no-cors is always set regardless of passed options
+    const defaultOptions: RequestInit = {
+        mode: 'no-cors' as RequestMode,  // Always use no-cors
+        credentials: 'omit',
+        cache: 'no-cache',
+        signal: controller.signal
     };
 
     try {
-        const response = await fetch(url, finalOptions);
-        // With no-cors, we can't access response details but can check if request completed
-        if (response.type === 'opaque') {
-            return true; // Request completed in no-cors mode
-        }
-        return response.ok;
+        const response = await fetch(url, {
+            ...defaultOptions,
+            ...options,
+           mode: 'no-cors' as RequestMode // Ensure this isn't overridden
+        });
+        clearTimeout(timeoutId);
+        // With no-cors, we can only check if request completed
+         return response.type === 'opaque' ? true : response.ok;
     } catch (error) {
+        clearTimeout(timeoutId);
         console.warn(`Request to ${url} failed:`, error);
         return false;
     }
@@ -64,7 +63,6 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
 }) => {
     const [tests, setTests] = useState<AdvancedTestState>({
         timezone: { status: 'pending', message: 'Not tested', details: [] },
-        browser: { status: 'pending', message: 'Not tested', details: [] },
         network: { status: 'pending', message: 'Not tested', details: [] },
         fingerprint: { status: 'pending', message: 'Not tested', details: [] },
         traffic: { status: 'pending', message: 'Not tested', details: [] }
@@ -72,17 +70,19 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
     
     const [isLocalRunning, setIsLocalRunning] = useState(false);
 
+    // Component mount logging
     useEffect(() => {
-        if (triggerTests && !isLocalRunning) {
-            setIsLocalRunning(true);
-            runTests().finally(() => {
-                setIsLocalRunning(false);
-                if (onTestComplete) {
-                    onTestComplete();
-                }
-            });
-        }
-    }, [triggerTests, onTestComplete]);
+        addLog('[LIFECYCLE] AdvancedNetworkTests component mounted');
+        return () => {
+            addLog('[LIFECYCLE] AdvancedNetworkTests component unmounting');
+        };
+    }, []); // Empty deps = only on mount/unmount
+
+  
+  const timeServices = [
+    { url: 'https://httpbin.org/get', name: 'HTTP Bin Get' },
+    { url: 'https://httpbin.org/status/200', name: 'HTTP Bin Status' }
+];
 
     const checkTimezoneLeaks = async (): Promise<TestResult> => {
         addLog('Starting timezone leak detection...');
@@ -98,28 +98,25 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         const dateStr = new Date().toLocaleString();
         results.push(`Locale date string: ${dateStr}`);
 
-        // Use multiple services with fallback
-        const timeServices = [
-            'https://worldtimeapi.org/api/ip',
-            'https://ipapi.co/timezone'
-        ];
-
         let networkTimezone = null;
 
-        for (const service of timeServices) {
-            try {
-                await delay(1000); // Add delay between requests
-                const isAvailable = await safeFetch(service);
-                if (isAvailable) {
-                    results.push(`Successfully connected to time service: ${service}`);
+      for (const service of timeServices) {
+          try {
+              await delay(1000); // Add delay between requests
+              const response = await fetch(service.url, {
+                 mode: 'no-cors' as RequestMode,
+                    credentials: 'omit'
+                });
+               if (response.type === 'opaque') {
+                  results.push(`Successfully connected to time service: ${service.name}`);
                 } else {
-                    results.push(`Failed to connect to time service: ${service}`);
+                   results.push(`Failed to connect to time service: ${service.name}`);
                 }
-            } catch (error) {
-                results.push(`Error checking time service: ${service}`);
-                continue;
-            }
-        }
+          } catch (error) {
+              results.push(`Error checking time service: ${service.name}`);
+              continue;
+          }
+      }
 
         return {
             status: leaks.length > 0 ? 'failed' : 'passed',
@@ -127,6 +124,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             details: [...results, ...leaks]
         };
     };
+
 
     const checkBrowserFingerprint = (): TestResult => {
         addLog('Starting browser fingerprint analysis...');
@@ -181,21 +179,27 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         };
     };
 
-    const checkNetworkInterfaces = async (): Promise<TestResult> => {
+   const checkNetworkInterfaces = async (): Promise<TestResult> => {
         addLog('Starting network interface analysis...');
         const results: string[] = [];
         const leaks: string[] = [];
 
-        // Test network characteristics with increased delays
-        const sizes = [1500, 1400, 1300, 1200];
-        
-        for (const size of sizes) {
+        // Part 1: Packet size testing
+        const packetSizes = [1500, 1400, 1300, 1200];
+        for (const size of packetSizes) {
             try {
-                await delay(2000); // Increased delay between requests
+                await delay(2000);
+                const payload = new URLSearchParams();
+                payload.append('data', 'x'.repeat(size));
+                
                 const start = performance.now();
-                const success = await safeFetch('https://api.ipify.org', {
+               const success = await safeFetch('https://httpbin.org/post', {
                     method: 'POST',
-                    body: 'x'.repeat(size)
+                    body: payload.toString(),
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                      mode: 'no-cors' as RequestMode
                 });
                 const end = performance.now();
                 const time = end - start;
@@ -213,7 +217,38 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             }
         }
 
-        // Network interface enumeration
+        // Part 2: Connection testing
+        const testUrls = [
+            'https://httpbin.org/get',
+            'https://httpbin.org/status/200',
+            'https://httpbin.org/delay/1'
+        ];
+        
+        for (const url of testUrls) {
+            try {
+                await delay(2000);
+                const start = performance.now();
+                 const success = await safeFetch(url, {
+                    method: 'GET',
+                    mode: 'no-cors' as RequestMode
+                });
+                const end = performance.now();
+                const time = end - start;
+
+                if (success) {
+                    results.push(`Request to ${url}: ${time.toFixed(2)}ms`);
+                    if (time > 100) {
+                        leaks.push(`High latency detected for ${url}`);
+                    }
+                } else {
+                    results.push(`Failed to connect to ${url}`);
+                }
+            } catch (error) {
+                results.push(`Error testing ${url}`);
+            }
+        }
+
+        // Part 3: Network interface enumeration
         if ('connection' in navigator) {
             const connection = (navigator as any).connection;
             if (connection) {
@@ -231,7 +266,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         };
     };
 
-    const analyzeTrafficPatterns = async (): Promise<TestResult> => {
+     const analyzeTrafficPatterns = async (): Promise<TestResult> => {
         addLog('Starting traffic pattern analysis...');
         const results: string[] = [];
         const leaks: string[] = [];
@@ -242,7 +277,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             try {
                 await delay(2000); // Increased delay between requests
                 const start = performance.now();
-                const success = await safeFetch('https://api.ipify.org');
+               const success = await safeFetch('https://httpbin.org/get');
                 const time = performance.now() - start;
                 
                 if (success) {
@@ -280,97 +315,152 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         };
     };
 
+      // At the top of the component, after state declarations
+    const runTest = useCallback(async (
+        testFunction: () => Promise<TestResult> | TestResult,
+        testKey: keyof AdvancedTestState
+    ) => {
+         // Only run test if it hasn't completed
+        if (tests[testKey].status === 'passed' || tests[testKey].status === 'failed') {
+            return;
+        }
+       
+        addLog(`=== Starting test: ${testKey} ===`);
+        const initialState = tests[testKey];
+        
+        try {
+            setTests(prev => ({
+                ...prev,
+                [testKey]: { status: 'running', message: 'Testing...', details: [] }
+            }));
+
+            const result = await Promise.race([
+                testFunction(),
+                new Promise<TestResult>((_, reject) => 
+                    setTimeout(() => reject(new Error('Test timeout')), 30000)
+                )
+            ]);
+            
+            // Update state but preserve other test results
+            setTests(prev => ({
+                ...prev,
+                [testKey]: result
+            }));
+            
+            await delay(2000);
+        } catch (error) {
+            setTests(prev => ({
+                ...prev,
+                [testKey]: {
+                    status: 'error',
+                    message: `Test completed with some issues`,
+                    details: initialState?.details || []
+                }
+            }));
+        }
+    }, [tests, addLog]);
+
+
     const runTests = async () => {
-        // Keep track of original state in case of errors
-        let originalState: AdvancedTestState | null = null;
+        const currentState = { ...tests };
         
         setTests(prev => {
-            originalState = prev;
-            const entries: TestEntries = Object.entries(prev) as TestEntries;
-            const updatedEntries = entries.map(([key]) => [
-                key,
-                { status: 'running' as const, message: 'Testing...', details: [] }
-            ]);
-            return Object.fromEntries(updatedEntries) as AdvancedTestState;
+            const updatedTests = { ...prev };
+            Object.keys(updatedTests).forEach((key) => {
+                if (updatedTests[key as keyof AdvancedTestState].status === 'pending') {
+                    updatedTests[key as keyof AdvancedTestState] = {
+                        status: 'running',
+                        message: 'Testing...',
+                        details: []
+                    };
+                }
+            });
+            return updatedTests;
         });
 
-        // Enhanced test runner with better state management
-        const runTest = async (
-            testFunction: () => Promise<TestResult> | TestResult,
-            testKey: keyof AdvancedTestState
-        ) => {
-            try {
-                const result = await Promise.race([
-                    testFunction(),
-                    // Timeout after 30 seconds
-                    new Promise<TestResult>((_, reject) => 
-                        setTimeout(() => reject(new Error('Test timeout')), 30000)
-                    )
-                ]);
-                
-                setTests(prev => ({ ...prev, [testKey]: result }));
-                await delay(2000); // Increased delay between tests
-            } catch (error) {
-                console.warn(`Test ${testKey} failed:`, error);
-                // Don't reset other tests' state on error
-                setTests(prev => ({
-                    ...prev,
-                    [testKey]: {
-                        status: 'error',
-                        message: `Test completed with some issues`,
-                        details: prev[testKey]?.details || []
-                    }
-                }));
+        try {
+            if (currentState.timezone.status === 'pending') {
+                await runTest(checkTimezoneLeaks, 'timezone');
             }
-        };
+            if (currentState.network.status === 'pending') {
+                await runTest(checkNetworkInterfaces, 'network');
+            }
+            if (currentState.fingerprint.status === 'pending') {
+                await runTest(checkBrowserFingerprint, 'fingerprint');
+            }
+            if (currentState.traffic.status === 'pending') {
+                await runTest(analyzeTrafficPatterns, 'traffic');
+            }
+            
+            setIsLocalRunning(false);
+            if (onTestComplete) {
+                onTestComplete();
+            }
+        } catch (error) {
+            addLog(`Test sequence failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            setIsLocalRunning(false);
+            if (onTestComplete) {
+                onTestComplete();
+            }
+        }
 
-        // Run tests sequentially
-        await runTest(checkTimezoneLeaks, 'timezone');
-        await runTest(checkBrowserFingerprint, 'browser');
-        await runTest(checkNetworkInterfaces, 'network');
-        await runTest(analyzeTrafficPatterns, 'traffic');
+        return;
     };
+
+
+    // Modify the trigger effect
+    useEffect(() => {
+        if (triggerTests && !isLocalRunning) {
+            addLog('[TRIGGER] Starting advanced tests sequence');
+            setIsLocalRunning(true);
+            runTests();
+        }
+    }, [triggerTests]); // Only depend on triggerTests
 
     const getStatusIcon = (status: TestResult['status']) => {
-        switch (status) {
-            case 'passed':
-                return <CheckCircle className="w-5 h-5 text-green-500" />;
-            case 'failed':
-                return <AlertTriangle className="w-5 h-5 text-red-500" />;
-            case 'running':
-                return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
-            default:
-                return <Shield className="w-5 h-5 text-gray-400" />;
-        }
-    };
-
-    return (
-        <div className="w-full space-y-4">
-            {Object.entries(tests).map(([testName, test]) => (
-                <div
-                    key={testName}
-                    className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-                >
-                    <div className="flex items-center gap-4 mb-2">
-                        {getStatusIcon(test.status)}
-                        <div className="flex-1">
-                            <h3 className="font-mono font-medium uppercase tracking-wide">
-                                {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
-                            </h3>
-                            <p className="text-sm text-gray-600">{test.message}</p>
-                        </div>
+    switch (status) {
+        case 'passed':
+            return <CheckCircle className="w-5 h-5 text-green-500" />;
+        case 'failed':
+            return <AlertTriangle className="w-5 h-5 text-red-500" />;
+        case 'running':
+        case 'pending':  // Add pending to show loader
+            return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+         case 'error':
+            return <AlertTriangle className="w-5 h-5 text-red-500" />;
+        default:
+            return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+    }
+};
+    
+    // In the render section, we can add logging without causing loops
+    const TestDisplay = Object.entries(tests).map(([testName, test]) => {
+        return (
+            <div
+                key={testName}
+                className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+            >
+                <div className="flex items-center gap-4 mb-2">
+                    {getStatusIcon(test.status)}
+                    <div className="flex-1">
+                        <h3 className="font-mono font-medium uppercase tracking-wide">
+                            {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
+                        </h3>
+                        <p className="text-sm text-gray-600">{test.message}</p>
                     </div>
-                    {test.details && test.details.length > 0 && (
-                        <div className="ml-9 mt-2 text-sm text-gray-600 font-mono">
-                            {test.details.map((detail: string, index: number) => (
-                                <div key={index} className="mb-1">{detail}</div>
-                            ))}
-                        </div>
-                    )}
                 </div>
-            ))}
-        </div>
-    );
+                {test.details && test.details.length > 0 && (
+                    <div className="ml-9 mt-2 text-sm text-gray-600 font-mono">
+                        {test.details.map((detail: string, index: number) => (
+                            <div key={index} className="mb-1">{detail}</div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    });
+
+    return <div className="w-full space-y-4">{TestDisplay}</div>;
 };
 
 export default AdvancedNetworkTests;
