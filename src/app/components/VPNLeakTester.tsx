@@ -10,14 +10,13 @@ import type {
     EnhancedWebRTCResult,
     IPCheckResult,
     GeoLocation,
-    LocationMarker,
     IPServiceResult,
-    DNSResult,
     LeakAnalysis,
     DNSServer,
-    IPService
+    IPService,
+    DNSAnswer
 } from './types';
-import L from 'leaflet';
+import IPLocationMap from './IPLocationMap';
 
 // Constants remain the same
 const DNS_SERVERS: DNSServer[] = [
@@ -40,60 +39,9 @@ const IP_SERVICES: IPService[] = [
 ];
 
 
-// Simple marker icon SVG as a base64 string
-const markerIconBase64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNSIgaGVpZ2h0PSI0MSIgdmlld0JveD0iMCAwIDI1IDQxIj48cGF0aCBmaWxsPSIjMWYyOTM3IiBkPSJNMTIuNSAwQzUuNiAwIDAgNS42IDAgMTIuNWMwIDcuMyAxMi41IDI4LjUgMTIuNSAyOC41UzI1IDE5LjggMjUgMTIuNSAyMC40IDAgMTIuNSAwem0wIDE3LjVjLTIuOCAwLTUtMi4yLTUtNXMyLjItNSA1LTUgNSAyLjIgNSA1LTIuMiA1LTUgNXoiLz48L3N2Zz4=";
 
-// Simple marker shadow SVG as a base64 string
-const markerShadowBase64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MSIgaGVpZ2h0PSI0MSIgdmlld0JveD0iMCAwIDQxIDQxIj48cGF0aCBmaWxsPSJyZ2JhKDAsIDAsIDAsIDAuMikiIGQ9Ik0xMi41IDBDNi4yIDAgMSA1LjIgMSAxMS41YzAgNy4zIDExLjUgMjguNSAxMS41IDI4LjVzMTEuNS0yMS4yIDExLjUtMjguNUMyNCAxIDIwLjggMCAxMi41IDB6Ii8+PC9zdmc+";
-
-// Create icon objects
-const customIcon = new L.Icon({
-    iconUrl: markerIconBase64,
-    shadowUrl: markerShadowBase64,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-
-// Dynamic map import remains the same
 const DynamicIPMap = dynamic(() =>
-    import('react-leaflet').then((leaflet) => {
-        const { MapContainer, TileLayer, Marker, Popup } = leaflet;
-        return ({ markers }: { markers: LocationMarker[] }) => {
-            const center = markers.length > 0
-                ? [markers[0].lat, markers[0].lon]
-                : [0, 0];
-            return (
-                <div className="h-[400px] w-full rounded-lg overflow-hidden">
-                <MapContainer
-                    center={center as [number, number]}
-                    zoom={12}
-                    style={{ height: '100%', width: '100%' }}
-                >
-                    <TileLayer
-                        attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    {markers.map((marker, index) => (
-                        <Marker
-                            key={index}
-                            position={[marker.lat, marker.lon]}
-                            icon={customIcon}
-                        >
-                            <Popup>
-                                <div className="font-mono text-sm">
-                                    <div>IP: {marker.label}</div>
-                                </div>
-                            </Popup>
-                        </Marker>
-                    ))}
-                </MapContainer>
-                </div>
-            );
-        };
-    }),
+    import('react-leaflet').then((leaflet) => leaflet.MapContainer),
     { ssr: false }
 );
 
@@ -164,9 +112,9 @@ const VPNLeakTester: React.FC = () => {
                 }
             };
 
-            // Test both UDP and TCP
-            const dataChannelUDP = pc.createDataChannel('UDP_test', { protocol: 'udp' });
-            const dataChannelTCP = pc.createDataChannel('TCP_test', { protocol: 'tcp' });
+            // Replace the dataChannel creation with:
+            pc.createDataChannel('connectivity_test');
+
 
             pc.createOffer()
                 .then(offer => pc.setLocalDescription(offer))
@@ -241,8 +189,8 @@ const VPNLeakTester: React.FC = () => {
                         ipv6Response.json()
                     ]);
 
-                    const ipv4Addresses = ipv4Data.Answer?.map((a: any) => a.data) || [];
-                    const ipv6Addresses = ipv6Data.Answer?.map((a: any) => a.data) || [];
+                    const ipv4Addresses = ipv4Data.Answer?.map((a: DNSAnswer) => a.data) || [];
+                    const ipv6Addresses = ipv6Data.Answer?.map((a: DNSAnswer) => a.data) || [];
 
                     // Perform reverse DNS lookup for each IPv4 address
                     const reversePtrs = await Promise.all(
@@ -387,7 +335,8 @@ const VPNLeakTester: React.FC = () => {
                 locations: locationData
             };
 
-        } catch (error) {
+        } catch {
+            // In the catch block for IP address check, change:
             addLog('Error in IP detection');
             return { error: true };
         }
@@ -543,7 +492,7 @@ const VPNLeakTester: React.FC = () => {
                         <MapPin className="w-5 h-5" />
                         IP Location Map
                     </h3>
-                    <DynamicIPMap
+                   <IPLocationMap
                         markers={geoData.map(loc => ({
                             lat: loc.lat,
                             lon: loc.lon,
