@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Loader, RefreshCw } from 'lucide-react';
 
 interface TestResult {
     status: 'pending' | 'running' | 'passed' | 'failed' | 'error';
@@ -364,10 +364,12 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             case 'error':
                 return <AlertTriangle className="w-5 h-5 text-red-500" />;
             case 'running':
+                return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
             case 'pending':
-                return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+                // Use a different icon for pending state
+                return <RefreshCw className="w-5 h-5 text-gray-400" />;
             default:
-                return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+                return <RefreshCw className="w-5 h-5 text-gray-400" />;
         }
     };
 

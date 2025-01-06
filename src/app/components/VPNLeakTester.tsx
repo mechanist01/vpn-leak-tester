@@ -455,6 +455,10 @@ const VPNLeakTester: React.FC = () => {
                 </div>
             </div>
 
+            <div className="text-sm text-gray-600 mb-4 font-mono">
+            brought to you by <a href="https://datablackout.com" className="hover:underline">datablackout.com</a>
+            </div>
+
             <div className="space-y-4 mb-6">
                 {Object.entries(tests).map(([testName, test]) => (
                     <div
