@@ -73,12 +73,6 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
     
     const [isLocalRunning, setIsLocalRunning] = useState(false);
 
-    useEffect(() => {
-        addLog('[LIFECYCLE] AdvancedNetworkTests component mounted');
-        return () => {
-            addLog('[LIFECYCLE] AdvancedNetworkTests component unmounting');
-        };
-    }, [addLog]);
 
     const checkTimezoneLeaks = useCallback(async (): Promise<TestResult> => {
         addLog('Starting timezone leak detection...');

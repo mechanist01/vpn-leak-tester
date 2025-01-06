@@ -1,6 +1,16 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import type { TileLayerProps } from 'react-leaflet';
-import L from 'leaflet';
+import { Icon } from 'leaflet';
+
+// Base64 encoded marker icon and shadow
+const markerIcon = new Icon({
+    iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCA0OCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjQ4Ij48cGF0aCBmaWxsPSIjMWYyOTM3IiBkPSJNMTIgMEMyLjIgMCAwIDkuOSAwIDEyLjNDMCAyMSAxMiA0OCAxMiA0OFMyNCAxOS42IDI0IDEyLjNDMjQgOS45IDIxLjggMCAxMiAweiIvPjxjaXJjbGUgZmlsbD0iI2ZmZiIgY3g9IjEyIiBjeT0iMTIiIHI9IjQiLz48L3N2Zz4=',
+    shadowUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MSIgaGVpZ2h0PSI0MSI+PHBhdGggZmlsbD0icmdiYSgwLCAwLCAwLCAwLjI1KSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTMsIDEzKSIgZD0iTTEyIDBDMi4yIDAgMCA5LjkgMCAxMi4zQzAgMjEgMTIgNDggMTIgNDhTMjQgMTkuNiAyNCAxMi4zQzI0IDkuOSAyMS44IDAgMTIgMHoiLz48L3N2Zz4=',
+    iconSize: [24, 48],
+    iconAnchor: [12, 48],
+    popupAnchor: [0, -48],
+    shadowSize: [41, 41],
+    shadowAnchor: [13, 41]
+});
 
 interface LocationMarker {
     lat: number;
@@ -33,6 +43,7 @@ const IPMap: React.FC<IPMapProps> = ({ markers }) => {
                     <Marker
                         key={index}
                         position={[marker.lat, marker.lon] as [number, number]}
+                        icon={markerIcon}
                     >
                         <Popup>
                             <div className="font-mono text-sm">
