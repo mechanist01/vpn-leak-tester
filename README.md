@@ -26,7 +26,7 @@ A comprehensive React-based VPN leak detection system that helps users identify 
 
 1. Clone the repository:
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/mechanist01/vpn-leak-tester
 cd vpn-leak-tester
 ```
 
