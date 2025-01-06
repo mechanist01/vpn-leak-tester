@@ -1,7 +1,6 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
-import { MapPin } from 'lucide-react';
 import type { LocationMarker } from './types';
 
 // Custom marker icon setup
@@ -46,7 +45,7 @@ const DynamicMap = dynamic(() =>
                         >
                             <Popup>
                                 <div className="font-mono text-sm">
-                                    <div>IP: {marker.label}</div>
+                                    <div>{marker.label}</div>
                                 </div>
                             </Popup>
                         </Marker>
@@ -58,25 +57,11 @@ const DynamicMap = dynamic(() =>
     { ssr: false }
 );
 
-// Wrapper component that includes the container div
+// Simplified component that only includes the map
 const IPLocationMap: React.FC<MapComponentProps> = ({ markers }) => {
     return (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="font-mono font-medium uppercase tracking-wide mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                IP Location Map
-            </h3>
-            <div className="h-[400px] w-full rounded-lg overflow-hidden">
-                <DynamicMap markers={markers} />
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-gray-600 font-mono">
-                {markers.map((marker, index) => (
-                    <div key={index}>
-                        <div>IP: {marker.label}</div>
-                        <div>Coordinates: {marker.lat}, {marker.lon}</div>
-                    </div>
-                ))}
-            </div>
+        <div className="h-[400px] w-full rounded-lg overflow-hidden">
+            <DynamicMap markers={markers} />
         </div>
     );
 };
