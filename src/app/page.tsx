@@ -1,11 +1,6 @@
-'use client';
-
-import VPNLeakTester from './components/VPNLeakTester';
+// app/page.tsx
+import ClientVPNLeakTester from './components/ClientVPNLeakTester'
 
 export default function Home() {
-  return (
-    <main className="min-h-screen p-8 bg-gray-50 font-mono">
-      <VPNLeakTester />
-    </main>
-  );
+  return <ClientVPNLeakTester />
 }

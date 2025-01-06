@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useCallback } from 'react';
 import { AlertTriangle, CheckCircle, Loader, RefreshCw, Shield, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
