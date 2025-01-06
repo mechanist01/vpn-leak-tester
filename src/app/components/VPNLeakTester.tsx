@@ -39,12 +39,6 @@ const IP_SERVICES: IPService[] = [
 ];
 
 
-
-const DynamicIPMap = dynamic(() =>
-    import('react-leaflet').then((leaflet) => leaflet.MapContainer),
-    { ssr: false }
-);
-
 const VPNLeakTester: React.FC = () => {
     const [tests, setTests] = useState<Tests>({
         webRTC: { status: 'pending', message: 'Not tested', details: [] },
