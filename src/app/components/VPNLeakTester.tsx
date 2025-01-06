@@ -470,7 +470,7 @@ const VPNLeakTester: React.FC = () => {
                         </div>
                         {test.details.length > 0 && (
                             <div className="ml-9 mt-2 text-sm text-gray-600 font-mono">
-                                {test.details.map((detail, index) => (
+                                {test.details.map((detail: string, index: number) => (
                                     <div key={index} className="mb-1">{detail}</div>
                                 ))}
                             </div>
