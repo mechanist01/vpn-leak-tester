@@ -61,8 +61,7 @@ const timeServices = [
 
 const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
     onTestComplete,
-    triggerTests,
-    addLog
+    triggerTests
 }) => {
     const [tests, setTests] = useState<AdvancedTestState>({
         timezone: { status: 'pending', message: 'Not tested', details: [] },
@@ -75,7 +74,6 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
 
 
     const checkTimezoneLeaks = useCallback(async (): Promise<TestResult> => {
-        addLog('Starting timezone leak detection...');
         const results: string[] = [];
         const leaks: string[] = [];
 
@@ -107,10 +105,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             message: leaks.length > 0 ? 'Timezone leaks detected' : 'No timezone leaks detected',
             details: [...results, ...leaks]
         };
-    }, [addLog]);
+    }, []);
 
     const checkBrowserFingerprint = useCallback((): TestResult => {
-        addLog('Starting browser fingerprint analysis...');
         const results: string[] = [];
         const leaks: string[] = [];
 
@@ -136,7 +133,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }
         } catch {
-            addLog('Error checking WebGL fingerprint');
+            
         }
 
         if (languages.some(lang => !lang.startsWith(navigator.language.split('-')[0])) ||
@@ -149,10 +146,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             message: leaks.length > 0 ? 'Browser fingerprint inconsistencies detected' : 'Browser fingerprint analysis complete',
             details: [...results, ...leaks]
         };
-    }, [addLog]);
+    }, []);
 
     const checkNetworkInterfaces = useCallback(async (): Promise<TestResult> => {
-        addLog('Starting network interface analysis...');
         const results: string[] = [];
         const leaks: string[] = [];
 
@@ -227,10 +223,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             message: leaks.length > 0 ? 'Network anomalies detected' : 'Network analysis complete',
             details: [...results, ...leaks]
         };
-    }, [addLog]);
+    }, []);
 
     const analyzeTrafficPatterns = useCallback(async (): Promise<TestResult> => {
-        addLog('Starting traffic pattern analysis...');
         const results: string[] = [];
         const leaks: string[] = [];
         const measurements: number[] = [];
@@ -275,7 +270,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             message: leaks.length > 0 ? 'Traffic anomalies detected' : 'Traffic analysis complete',
             details: [...results, ...leaks]
         };
-    }, [addLog]);
+    }, []);
 
     const runTest = useCallback(async (
         testFunction: () => Promise<TestResult> | TestResult,
@@ -285,7 +280,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             return;
         }
 
-        addLog(`=== Starting test: ${testKey} ===`);
+
         const initialState = tests[testKey];
 
         try {
@@ -317,12 +312,11 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }));
         }
-    }, [tests, addLog]);
+    }, [tests]);
 
     const runTests = useCallback(async () => {
         if (!isLocalRunning) {
             setIsLocalRunning(true);
-            addLog('[TRIGGER] Starting advanced tests sequence');
 
             const testFunctions = {
                 timezone: checkTimezoneLeaks,
@@ -350,7 +344,6 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         analyzeTrafficPatterns,
         tests,
         runTest,
-        addLog,
         onTestComplete
     ]);
 
