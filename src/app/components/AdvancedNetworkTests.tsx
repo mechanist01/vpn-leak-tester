@@ -28,12 +28,12 @@ interface AdvancedNetworkTestsProps {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Enhanced fetch with no-cors mode and better error handling
-const safeFetch = async (url: string, options: RequestInit = {}) => {
+const safeFetch = async (url: string, options: RequestInit = {}): Promise<boolean> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const defaultOptions: RequestInit = {
-        mode: 'no-cors' as RequestMode,  // Always use no-cors
+         mode: 'no-cors' as RequestMode,
         credentials: 'omit',
         cache: 'no-cache',
         signal: controller.signal
@@ -43,14 +43,13 @@ const safeFetch = async (url: string, options: RequestInit = {}) => {
         const response = await fetch(url, {
             ...defaultOptions,
             ...options,
-           mode: 'no-cors' as RequestMode // Ensure this isn't overridden
+           mode: 'no-cors' as RequestMode
         });
         clearTimeout(timeoutId);
-        // With no-cors, we can only check if request completed
-         return response.type === 'opaque' ? true : response.ok;
+        return response.type === 'opaque' ? true : response.ok;
     } catch (error) {
         clearTimeout(timeoutId);
-        console.warn(`Request to ${url} failed:`, error);
+         console.warn(`Request to ${url} failed:`, error);
         return false;
     }
 };
@@ -68,15 +67,15 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         traffic: { status: 'pending', message: 'Not tested', details: [] }
     });
     
-    const [isLocalRunning, setIsLocalRunning] = useState(false);
+     const [isLocalRunning, setIsLocalRunning] = useState(false);
 
     // Component mount logging
-    useEffect(() => {
-        addLog('[LIFECYCLE] AdvancedNetworkTests component mounted');
+     useEffect(() => {
+         addLog('[LIFECYCLE] AdvancedNetworkTests component mounted');
         return () => {
-            addLog('[LIFECYCLE] AdvancedNetworkTests component unmounting');
+             addLog('[LIFECYCLE] AdvancedNetworkTests component unmounting');
         };
-    }, []); // Empty deps = only on mount/unmount
+    }, [addLog]); // Empty deps = only on mount/unmount
 
   
   const timeServices = [
@@ -102,19 +101,15 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
 
       for (const service of timeServices) {
           try {
-              await delay(1000); // Add delay between requests
-              const response = await fetch(service.url, {
-                 mode: 'no-cors' as RequestMode,
-                    credentials: 'omit'
-                });
-               if (response.type === 'opaque') {
-                  results.push(`Successfully connected to time service: ${service.name}`);
-                } else {
-                   results.push(`Failed to connect to time service: ${service.name}`);
-                }
+              await delay(1000);
+              const response = await safeFetch(service.url);
+             results.push(
+                    response 
+                        ? `Successfully connected to time service: ${service.name}`
+                        : `Failed to connect to time service: ${service.name}`
+                );
           } catch (error) {
               results.push(`Error checking time service: ${service.name}`);
-              continue;
           }
       }
 
@@ -230,7 +225,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 const start = performance.now();
                  const success = await safeFetch(url, {
                     method: 'GET',
-                    mode: 'no-cors' as RequestMode
+                     mode: 'no-cors' as RequestMode
                 });
                 const end = performance.now();
                 const time = end - start;
@@ -275,10 +270,10 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         // Test latency patterns with increased delays
         for (let i = 0; i < 5; i++) {
             try {
-                await delay(2000); // Increased delay between requests
+                await delay(2000);
                 const start = performance.now();
-               const success = await safeFetch('https://httpbin.org/get');
-                const time = performance.now() - start;
+                const success = await safeFetch('https://httpbin.org/get');
+                 const time = performance.now() - start;
                 
                 if (success) {
                     measurements.push(time);
@@ -315,19 +310,18 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         };
     };
 
-      // At the top of the component, after state declarations
     const runTest = useCallback(async (
         testFunction: () => Promise<TestResult> | TestResult,
         testKey: keyof AdvancedTestState
     ) => {
-         // Only run test if it hasn't completed
         if (tests[testKey].status === 'passed' || tests[testKey].status === 'failed') {
             return;
         }
-       
+
         addLog(`=== Starting test: ${testKey} ===`);
-        const initialState = tests[testKey];
-        
+
+          // Store initial details before running the test
+         const initialState = tests[testKey];
         try {
             setTests(prev => ({
                 ...prev,
@@ -336,34 +330,32 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
 
             const result = await Promise.race([
                 testFunction(),
-                new Promise<TestResult>((_, reject) => 
-                    setTimeout(() => reject(new Error('Test timeout')), 30000)
+                 new Promise<TestResult>((_, reject) =>
+                     setTimeout(() => reject(new Error('Test timeout')), 30000)
                 )
             ]);
-            
-            // Update state but preserve other test results
-            setTests(prev => ({
+
+              setTests(prev => ({
                 ...prev,
                 [testKey]: result
             }));
-            
             await delay(2000);
         } catch (error) {
-            setTests(prev => ({
-                ...prev,
-                [testKey]: {
-                    status: 'error',
-                    message: `Test completed with some issues`,
-                    details: initialState?.details || []
-                }
-            }));
+             setTests(prev => ({
+                    ...prev,
+                    [testKey]: {
+                        status: 'error',
+                        message: `Test completed with some issues`,
+                        details: initialState?.details || ['An error occurred during testing']
+                    }
+                }));
         }
     }, [tests, addLog]);
 
 
-    const runTests = async () => {
+    const runTests = useCallback(async () => {
         const currentState = { ...tests };
-        
+
         setTests(prev => {
             const updatedTests = { ...prev };
             Object.keys(updatedTests).forEach((key) => {
@@ -391,52 +383,49 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             if (currentState.traffic.status === 'pending') {
                 await runTest(analyzeTrafficPatterns, 'traffic');
             }
-            
-            setIsLocalRunning(false);
-            if (onTestComplete) {
-                onTestComplete();
+
+             setIsLocalRunning(false);
+              if (onTestComplete) {
+                    onTestComplete();
             }
         } catch (error) {
             addLog(`Test sequence failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            setIsLocalRunning(false);
-            if (onTestComplete) {
-                onTestComplete();
+           setIsLocalRunning(false);
+                if (onTestComplete) {
+                    onTestComplete();
             }
         }
-
-        return;
-    };
+    }, [tests, runTest, onTestComplete, addLog]);
 
 
     // Modify the trigger effect
     useEffect(() => {
-        if (triggerTests && !isLocalRunning) {
-            addLog('[TRIGGER] Starting advanced tests sequence');
-            setIsLocalRunning(true);
-            runTests();
-        }
-    }, [triggerTests]); // Only depend on triggerTests
+          if (triggerTests && !isLocalRunning) {
+              addLog('[TRIGGER] Starting advanced tests sequence');
+             setIsLocalRunning(true);
+             runTests();
+          }
+     }, [triggerTests, isLocalRunning, runTests, addLog]);
 
-    const getStatusIcon = (status: TestResult['status']) => {
-    switch (status) {
-        case 'passed':
-            return <CheckCircle className="w-5 h-5 text-green-500" />;
-        case 'failed':
-            return <AlertTriangle className="w-5 h-5 text-red-500" />;
-        case 'running':
-        case 'pending':  // Add pending to show loader
-            return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
-         case 'error':
-            return <AlertTriangle className="w-5 h-5 text-red-500" />;
-        default:
-            return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
-    }
-};
-    
-    // In the render section, we can add logging without causing loops
+      const getStatusIcon = (status: TestResult['status']) => {
+            switch (status) {
+                case 'passed':
+                    return <CheckCircle className="w-5 h-5 text-green-500" />;
+                case 'failed':
+                case 'error':
+                    return <AlertTriangle className="w-5 h-5 text-red-500" />;
+                case 'running':
+                case 'pending':
+                   return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+                default:
+                    return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+            }
+    };
+
+
     const TestDisplay = Object.entries(tests).map(([testName, test]) => {
         return (
-            <div
+             <div
                 key={testName}
                 className="p-4 bg-gray-50 rounded-lg border border-gray-200"
             >
@@ -444,7 +433,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                     {getStatusIcon(test.status)}
                     <div className="flex-1">
                         <h3 className="font-mono font-medium uppercase tracking-wide">
-                            {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
+                           {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
                         </h3>
                         <p className="text-sm text-gray-600">{test.message}</p>
                     </div>
@@ -456,7 +445,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                         ))}
                     </div>
                 )}
-            </div>
+             </div>
         );
     });
 
