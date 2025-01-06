@@ -84,3 +84,12 @@ export interface DNSCheckResult {
     results: DNSResult[];
     message: string;
 }
+
+// Add this alongside your other interfaces
+export interface DNSAnswer {
+    name: string;
+    type: number;
+    TTL: number;
+    data: string;
+}
+

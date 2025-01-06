@@ -25,6 +25,7 @@ interface AdvancedNetworkTestsProps {
     onTestComplete?: () => void;
     triggerTests?: boolean;
     addLog: (message: string) => void;
+    isRunning?: boolean;  // Add this line
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
