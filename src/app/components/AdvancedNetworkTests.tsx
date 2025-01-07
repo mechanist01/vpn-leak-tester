@@ -3,14 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, CheckCircle, Loader, RefreshCw } from 'lucide-react';
 
-interface NavigatorWithConnection extends Navigator {
-    connection?: {
-        rtt?: number;
-        type?: string;
-        effectiveType?: string;
-        downlink?: number;
-    }
-}
 
 interface TestResult {
     status: 'pending' | 'running' | 'passed' | 'failed' | 'error';
