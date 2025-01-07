@@ -47,7 +47,7 @@ const TLSFingerprintTest: React.FC = () => {
     
     try {
       // Get TLS info from multiple sources
-      const [mainResponse, sslLabsResponse] = await Promise.all([
+      const [mainResponse] = await Promise.all([
         fetchWithTimeout('https://www.howsmyssl.com/a/check', {
           headers: {
             'Accept': 'application/json',
