@@ -38,11 +38,6 @@ npm install
 yarn install
 ```
 
-3. Create a `.env.local` file in the root directory and add any required environment variables:
-```env
-NEXT_PUBLIC_MAP_PROVIDER_KEY=your_map_provider_key_if_needed
-```
-
 ## Development
 
 To run the development server:
