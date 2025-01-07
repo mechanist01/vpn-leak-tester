@@ -74,7 +74,10 @@ const TLSFingerprintTest: React.FC = () => {
            TLS/SSL Security Test
          </h3>
          <p className="text-sm text-gray-500 italic">
-           Powered by <a href="https://github.com/mechanist01/VLT-BE" className="underline hover:text-gray-700" target="_blank" rel="noopener noreferrer">Python Flask Backend</a>
+           Powered by <a href="https://replit.com/@mechanist01/VLT-BE?v=1#run.py" className="underline hover:text-gray-700" target="_blank" rel="noopener noreferrer">Replit</a>
+         </p>
+         <p className="text-sm text-gray-500 italic">
+         Github Repository <a href="https://github.com/mechanist01/VLT-BE" className="underline hover:text-gray-700" target="_blank" rel="noopener noreferrer">TLS/SSL Tester</a>
          </p>
          <p className="text-sm text-gray-600">
            {isLoading ? 'Analyzing TLS/SSL configuration...' :
