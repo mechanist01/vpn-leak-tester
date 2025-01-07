@@ -61,7 +61,6 @@ const TLSFingerprintTest: React.FC = () => {
       ]);
 
       const mainData = await mainResponse.json();
-      const sslLabsData = await sslLabsResponse.json();
 
       const securityHeaders: Record<string, string> = {};
       mainResponse.headers.forEach((value, key) => {
