@@ -1,5 +1,6 @@
 # VPN Leak Tester
 
+Located online at https://vpnleaktester.netlify.app/
 A comprehensive React-based VPN leak detection system that helps users identify potential security vulnerabilities in their VPN connections. This application performs various tests including WebRTC leaks, DNS leaks, IP address consistency checks, and advanced network analysis.
 
 ## Features
