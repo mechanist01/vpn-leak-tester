@@ -1,5 +1,0 @@
-[[redirects]]
-  from = "/api/ssl-check"
-  to = "https://www.howsmyssl.com/a/check"
-  status = 200
-  force = true

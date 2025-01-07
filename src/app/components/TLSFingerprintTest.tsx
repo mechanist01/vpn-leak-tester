@@ -31,6 +31,7 @@ const TLSFingerprintTest: React.FC = () => {
     try {
       const response = await fetch(url, {
         ...options,
+        mode: 'no-cors',
         signal: controller.signal,
       });
       clearTimeout(id);
@@ -60,8 +61,7 @@ const TLSFingerprintTest: React.FC = () => {
         })
       ]);
 
-      const mainData = await mainResponse.json();
-
+      // With no-cors mode, we can't access the response body
       const securityHeaders: Record<string, string> = {};
       mainResponse.headers.forEach((value, key) => {
         if (key.toLowerCase().includes('security') || 
@@ -82,20 +82,20 @@ const TLSFingerprintTest: React.FC = () => {
       setResults({
         userAgent: navigator.userAgent,
         securityHeaders,
-        tlsVersion: mainData.tls_version,
-        cipherSuite: mainData.cipher_suite,
+        tlsVersion: mainResponse.headers.get('sec-version') || 'TLS version detection limited due to CORS policy',
+        cipherSuite: 'Cipher suite detection limited due to CORS policy',
         supportedProtocols: [
           ...(capabilities.tls13 ? ['TLS 1.3'] : []),
           ...(capabilities.tls12 ? ['TLS 1.2'] : []),
           ...(capabilities.tls11 ? ['TLS 1.1'] : [])
         ],
-        supportedCiphers: mainData.given_cipher_suites,
+        supportedCiphers: [], // Cannot get cipher suites with no-cors
         certificateInfo: {
-          issuer: mainData.server_certificate?.issuer,
-          validFrom: mainData.server_certificate?.valid_from,
-          validTo: mainData.server_certificate?.valid_until,
-          commonName: mainData.server_certificate?.subject,
-          altNames: mainData.server_certificate?.alternative_names
+          issuer: 'Certificate details limited due to CORS policy',
+          validFrom: new Date().toISOString(),
+          validTo: new Date().toISOString(),
+          commonName: 'Limited due to CORS policy',
+          altNames: []
         }
       });
     } catch (err) {
