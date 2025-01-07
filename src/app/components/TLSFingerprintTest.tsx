@@ -25,7 +25,7 @@ const TLSFingerprintTest: React.FC = () => {
   const [results, setResults] = useState<TLSTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = 'https://localhost:5001';
+  const API_BASE = 'https://vlt-be-ryanaregister.replit.app';
 
   const checkTLSFingerprint = async () => {
     setIsLoading(true);
