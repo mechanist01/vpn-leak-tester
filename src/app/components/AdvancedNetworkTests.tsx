@@ -3,6 +3,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, CheckCircle, Loader, RefreshCw } from 'lucide-react';
 
+interface NavigatorWithConnection extends Navigator {
+    connection?: {
+        rtt?: number;
+        type?: string;
+        effectiveType?: string;
+        downlink?: number;
+    }
+}
+
 interface TestResult {
     status: 'pending' | 'running' | 'passed' | 'failed' | 'error';
     message: string;
@@ -72,7 +81,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         fingerprint: { status: 'pending', message: 'Not tested', details: [] },
         traffic: { status: 'pending', message: 'Not tested', details: [] }
     });
-    
+
     const [isLocalRunning, setIsLocalRunning] = useState(false);
 
 
@@ -89,12 +98,24 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         const dateStr = new Date().toLocaleString();
         results.push(`Locale date string: ${dateStr}`);
 
+        // Add timezone region validation
+        const timezoneRegion = systemTimezone.split('/')[0];
+        const userLocation = await fetch('https://ipapi.co/json/')
+            .then(res => res.json())
+            .catch(() => null);
+
+        if (timezoneRegion === 'America' && userLocation) {
+            if (!userLocation.country_code?.startsWith('US')) {
+                leaks.push(`Timezone indicates US location but IP location shows ${userLocation.country_name}`);
+            }
+        }
+
         for (const service of timeServices) {
             try {
                 await delay(1000);
                 const response = await safeFetch(service.url);
                 results.push(
-                    response 
+                    response
                         ? `Successfully connected to time service: ${service.name}`
                         : `Failed to connect to time service: ${service.name}`
                 );
@@ -136,7 +157,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }
         } catch {
-            
+
         }
 
         if (languages.some(lang => !lang.startsWith(navigator.language.split('-')[0])) ||
@@ -161,7 +182,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 await delay(2000);
                 const payload = new URLSearchParams();
                 payload.append('data', 'x'.repeat(size));
-                
+
                 const start = performance.now();
                 const success = await safeFetch('https://httpbin.org/post', {
                     method: 'POST',
@@ -190,7 +211,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             'https://httpbin.org/status/200',
             'https://httpbin.org/delay/1'
         ];
-        
+
         for (const url of testUrls) {
             try {
                 await delay(2000);
@@ -239,7 +260,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 const start = performance.now();
                 const success = await safeFetch('https://httpbin.org/get');
                 const time = performance.now() - start;
-                
+
                 if (success) {
                     measurements.push(time);
                     results.push(`Request ${i + 1} latency: ${time.toFixed(2)}ms`);
