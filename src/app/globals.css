@@ -1,29 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-black: #000000;
-  --color-white: #ffffff;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  --background: #000000;
+  --foreground: #ffffff;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
-* {
-  border-radius: 0;
+@layer base {
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6, p, span, a, button {
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    color: var(--foreground);
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  a:hover {
+    opacity: 0.8;
+  }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--foreground);
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  button:hover {
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-white);
-  color: var(--color-black);
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.tool-button {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  border: 1px solid var(--foreground);
+  transition: all 0.2s;
+}
+
+.tool-button:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.close-button {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  background: none;
+  border: none;
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 2rem;
+}
+
+.close-button:hover {
+  opacity: 0.8;
+}
+
+/* Updated to match result-block styling */
+.tool-section {
+  @apply bg-black shadow-lg p-6 mx-4 border border-white/10 text-white;
+  background-color: #000000;
+  margin-bottom: 1.5rem;
+}
+
+.tool-header {
+  @apply flex items-center gap-4 mb-6;
+}
+
+.icon-container {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-content {
+  @apply flex-1;
+}
+
+/* Updated to match result section heading style */
+.tool-title, .test-heading {
+  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  text-decoration: underline;
+  margin-bottom: 1rem;
+}
+
+/* Updated to match result section text style */
+.tool-description, .test-status {
+  @apply text-xl;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+}
+
+.tool-subtitle {
+  @apply text-xl mt-4;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+}
+
+.tool-links {
+  @apply text-xl mt-4;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+}
+
+.tool-links a {
+  text-decoration: underline;
+}
+
+.test-results {
+  margin-top: 2rem;
+}
+
+.result-block {
+  @apply bg-black shadow-lg p-6 mx-4 border border-white/10 text-white;
+  background-color: #000000;
+  margin-bottom: 1.5rem;
+}
+
+.result-block h4 {
+  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  text-decoration: underline;
+  margin-bottom: 1rem;
+}
+
+.result-block div {
+  @apply text-xl;
+  line-height: 1.5;
+}
+
+.results-container {
+  @apply bg-black shadow-lg p-6 mx-4 border border-white/10 text-white;
+  background-color: #000000;
+}
+
+.result-section {
+  margin-bottom: 1.5rem;
+}
+
+.result-section h4 {
+  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  text-decoration: underline;
+  margin-bottom: 1rem;
+}
+
+.result-section div {
+  @apply text-xl;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.test-details {
+  @apply text-xl;
+  margin-top: 1rem;
+  line-height: 1.5;
 }

@@ -1,8 +1,7 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, CheckCircle, Loader, RefreshCw } from 'lucide-react';
-
 
 interface TestResult {
     status: 'pending' | 'running' | 'passed' | 'failed' | 'error';
@@ -27,8 +26,8 @@ interface NetworkConnection {
 interface AdvancedNetworkTestsProps {
     onTestComplete?: () => void;
     triggerTests?: boolean;
-    addLog: (message: string) => void;
-    isRunning?: boolean;  // Add this line
+    addLog?: (message: string) => void; // addLog is now optional
+    isRunning?: boolean;
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -65,7 +64,9 @@ const timeServices = [
 
 const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
     onTestComplete,
-    triggerTests
+    triggerTests,
+    addLog,
+    isRunning: parentIsRunning
 }) => {
     const [tests, setTests] = useState<AdvancedTestState>({
         timezone: { status: 'pending', message: 'Not tested', details: [] },
@@ -75,7 +76,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
     });
 
     const [isLocalRunning, setIsLocalRunning] = useState(false);
-
+    const isRunning = parentIsRunning || isLocalRunning;
 
     const checkTimezoneLeaks = useCallback(async (): Promise<TestResult> => {
         const results: string[] = [];
@@ -90,7 +91,6 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         const dateStr = new Date().toLocaleString();
         results.push(`Locale date string: ${dateStr}`);
 
-        // Add timezone region validation
         const timezoneRegion = systemTimezone.split('/')[0];
         const userLocation = await fetch('https://ipapi.co/json/')
             .then(res => res.json())
@@ -149,7 +149,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }
         } catch {
-
+            // Ignore WebGL errors
         }
 
         if (languages.some(lang => !lang.startsWith(navigator.language.split('-')[0])) ||
@@ -296,14 +296,17 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
             return;
         }
 
-
-        const initialState = tests[testKey];
+         const initialState = tests[testKey];
 
         try {
             setTests(prev => ({
                 ...prev,
                 [testKey]: { status: 'running', message: 'Testing...', details: [] }
             }));
+
+             if (addLog) {
+                addLog(`Starting ${testKey} test`);
+            }
 
             const result = await Promise.race([
                 testFunction(),
@@ -312,14 +315,21 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 )
             ]);
 
+             if (addLog) {
+                addLog(`Finished ${testKey} test: ${result.message}`);
+            }
+
             setTests(prev => ({
                 ...prev,
                 [testKey]: result
             }));
-
-            await delay(2000);
-        } catch {
-            setTests(prev => ({
+             await delay(2000);
+        } catch (error) {
+            console.error(`Error running test ${testKey}:`, error);
+              if (addLog) {
+                 addLog(`Error running ${testKey} test`);
+              }
+              setTests(prev => ({
                 ...prev,
                 [testKey]: {
                     status: 'error',
@@ -328,11 +338,15 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }));
         }
-    }, [tests]);
+    }, [tests, addLog]);
 
     const runTests = useCallback(async () => {
         if (!isLocalRunning) {
             setIsLocalRunning(true);
+
+             if (addLog) {
+                  addLog('Starting all tests');
+              }
 
             const testFunctions = {
                 timezone: checkTimezoneLeaks,
@@ -349,6 +363,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             } finally {
                 setIsLocalRunning(false);
+                 if (addLog) {
+                   addLog('All tests completed');
+                  }
                 onTestComplete?.();
             }
         }
@@ -360,52 +377,51 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         analyzeTrafficPatterns,
         tests,
         runTest,
-        onTestComplete
+        onTestComplete,
+        addLog
     ]);
 
     useEffect(() => {
-        if (triggerTests && !isLocalRunning) {
+        if (triggerTests && !isRunning) {
             void runTests();
         }
-    }, [triggerTests, isLocalRunning, runTests]);
+    }, [triggerTests, isRunning, runTests]);
 
     const getStatusIcon = (status: TestResult['status']) => {
         switch (status) {
             case 'passed':
-                return <CheckCircle className="w-5 h-5 text-green-500" />;
+                return <CheckCircle className="text-green-500" />;
             case 'failed':
             case 'error':
-                return <AlertTriangle className="w-5 h-5 text-red-500" />;
+                return <AlertTriangle className="text-red-500" />;
             case 'running':
-                return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
-            case 'pending':
-                // Use a different icon for pending state
-                return <RefreshCw className="w-5 h-5 text-gray-400" />;
+                return <Loader className="animate-spin" />;
             default:
-                return <RefreshCw className="w-5 h-5 text-gray-400" />;
+                return <RefreshCw />;
         }
     };
 
-    return (
-        <div className="w-full space-y-4">
+   return (
+        <div className="space-y-4">
             {Object.entries(tests).map(([testName, test]) => (
-                <div
-                    key={testName}
-                    className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-                >
-                    <div className="flex items-center gap-4 mb-2">
-                        {getStatusIcon(test.status)}
-                        <div className="flex-1">
-                            <h3 className="font-mono font-medium uppercase tracking-wide">
-                                {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
-                            </h3>
-                            <p className="text-sm text-gray-600">{test.message}</p>
+                <div key={testName} className="tool-section terminal-style">
+                    <div className="tool-header">
+                        <div className="flex items-center gap-2">
+                            {getStatusIcon(test.status)}
+                            <div>
+                                <h3 className="text-lg font-semibold">
+                                    {testName.charAt(0).toUpperCase() + testName.slice(1)} Test
+                                </h3>
+                                <p className="text-sm opacity-90">{test.message}</p>
+                            </div>
                         </div>
                     </div>
                     {test.details.length > 0 && (
-                        <div className="ml-9 mt-2 text-sm text-gray-600 font-mono">
+                        <div className="test-details mt-4 space-y-2 text-sm">
                             {test.details.map((detail: string, index: number) => (
-                                <div key={index} className="mb-1">{detail}</div>
+                                <div key={index} className="opacity-85">
+                                    {detail}
+                                </div>
                             ))}
                         </div>
                     )}

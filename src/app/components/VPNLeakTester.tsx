@@ -20,7 +20,6 @@ import type {
 import IPLocationMap from './IPLocationMap';
 import TLSFingerprintTest from './TLSFingerprintTest';
 
-// Constants remain the same
 const DNS_SERVERS: DNSServer[] = [
   {
     name: 'Cloudflare',
@@ -40,7 +39,6 @@ const IP_SERVICES: IPService[] = [
   { name: 'ipapi', url: 'https://ipapi.co/json/' }
 ];
 
-
 const VPNLeakTester: React.FC = () => {
   const [tests, setTests] = useState<Tests>({
     webRTC: { status: 'pending', message: 'Not tested', details: [] },
@@ -57,11 +55,9 @@ const VPNLeakTester: React.FC = () => {
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
   }, []);
 
-  // Test implementation functions remain the same
   const checkWebRTCLeak = async (): Promise<EnhancedWebRTCResult> => {
     addLog('Starting WebRTC leak test...');
     return new Promise((resolve) => {
-      // Add multiple STUN servers
       const stunServers = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
@@ -77,7 +73,6 @@ const VPNLeakTester: React.FC = () => {
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          // Enhanced IP detection regex for both IPv4 and IPv6
           const ipv4Match = event.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
           const ipv6Match = event.candidate.candidate.match(/([a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/);
 
@@ -102,15 +97,12 @@ const VPNLeakTester: React.FC = () => {
             addLog(`Found IPv6: ${ip} (${event.candidate.protocol || 'unknown protocol'})`);
           }
 
-          // Log additional candidate information
           addLog(`Candidate type: ${event.candidate.type}`);
           addLog(`Transport: ${event.candidate.protocol}`);
         }
       };
 
-      // Replace the dataChannel creation with:
       pc.createDataChannel('connectivity_test');
-
 
       pc.createOffer()
         .then(offer => pc.setLocalDescription(offer))
@@ -124,7 +116,6 @@ const VPNLeakTester: React.FC = () => {
           });
         });
 
-      // Set timeout to ensure test completion
       setTimeout(() => {
         pc.close();
         addLog('WebRTC test completed');
@@ -164,7 +155,6 @@ const VPNLeakTester: React.FC = () => {
 
       for (const server of DNS_SERVERS) {
         try {
-          // Test both A and AAAA records
           const [ipv4Response, ipv6Response] = await Promise.all([
             fetch(`${server.endpoint}?name=${domain}&type=A`, {
               headers: {
@@ -188,7 +178,6 @@ const VPNLeakTester: React.FC = () => {
           const ipv4Addresses = ipv4Data.Answer?.map((a: DNSAnswer) => a.data) || [];
           const ipv6Addresses = ipv6Data.Answer?.map((a: DNSAnswer) => a.data) || [];
 
-          // Perform reverse DNS lookup for each IPv4 address
           const reversePtrs = await Promise.all(
             ipv4Addresses.map(async (ip: string) => {
               try {
@@ -224,30 +213,25 @@ const VPNLeakTester: React.FC = () => {
       }
     }
 
-    // Enhanced leak detection
     const leakAnalysis: LeakAnalysis = {
       inconsistentIPv4: false,
       inconsistentIPv6: false,
       mismatchedPtr: false
     };
 
-    // Check for inconsistencies across resolvers
     for (const domain of testDomains) {
       const domainResults = results.filter(r => r.domain === domain);
       const ipv4Sets = domainResults.map(r => new Set(r.ipv4));
       const ipv6Sets = domainResults.map(r => new Set(r.ipv6));
 
-      // Check IPv4 consistency
       leakAnalysis.inconsistentIPv4 = leakAnalysis.inconsistentIPv4 ||
         !ipv4Sets.every(set => set.size === ipv4Sets[0].size &&
           Array.from(set).every(ip => ipv4Sets[0].has(ip)));
 
-      // Check IPv6 consistency
       leakAnalysis.inconsistentIPv6 = leakAnalysis.inconsistentIPv6 ||
         !ipv6Sets.every(set => set.size === ipv6Sets[0].size &&
           Array.from(set).every(ip => ipv6Sets[0].has(ip)));
 
-      // Check PTR consistency
       const ptrs = domainResults.map(r => r.reversePtr).filter(Boolean);
       if (ptrs.length > 1) {
         leakAnalysis.mismatchedPtr = leakAnalysis.mismatchedPtr ||
@@ -265,7 +249,6 @@ const VPNLeakTester: React.FC = () => {
       ].filter(Boolean).join('; ') || 'No DNS leaks detected'
     };
   };
-
 
   const checkIPAddress = async (): Promise<IPCheckResult> => {
     addLog('Starting comprehensive IP address check...');
@@ -332,12 +315,10 @@ const VPNLeakTester: React.FC = () => {
       };
 
     } catch {
-      // In the catch block for IP address check, change:
       addLog('Error in IP detection');
       return { error: true };
     }
   };
-
 
   const getIpLocation = async (ip: string): Promise<GeoLocation> => {
     addLog(`Fetching geolocation for IP: ${ip}`);
@@ -363,7 +344,6 @@ const VPNLeakTester: React.FC = () => {
 
   const runBasicTests = async () => {
     try {
-      // WebRTC Test
       const webRTCResult = await checkWebRTCLeak();
       setTests(prev => ({
         ...prev,
@@ -381,7 +361,6 @@ const VPNLeakTester: React.FC = () => {
         }
       }));
 
-      // DNS Test
       const dnsResult = await checkDNSLeaks();
       setTests(prev => ({
         ...prev,
@@ -394,7 +373,6 @@ const VPNLeakTester: React.FC = () => {
         }
       }));
 
-      // IP Test
       const ipResult = await checkIPAddress();
       setTests(prev => ({
         ...prev,
@@ -436,63 +414,58 @@ const VPNLeakTester: React.FC = () => {
   const getStatusIcon = (status: TestStatus) => {
     switch (status) {
       case 'passed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle />;
       case 'failed':
-        return <AlertTriangle className="w-5 h-5 text-red-500" />;
+        return <AlertTriangle />;
       case 'running':
-        return <Loader className="w-5 h-5 animate-spin text-gray-500" />;
+        return <Loader className="animate-spin"/>;
       default:
-        return <RefreshCw className="w-5 h-5 text-gray-400" />;
+        return <RefreshCw />;
     }
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <div className="mb-6 flex items-center gap-4">
-        <Shield className="w-8 h-8" />
-        <div>
-          <h1 className="text-2xl font-mono font-bold uppercase tracking-wider">VPN Leak Test</h1>
-          <p className="text-gray-600 font-mono">Comprehensive VPN leak detection system</p>
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div className="tool-section terminal-style">
+        <div className="tool-header">
+          <Shield />
+          <div>
+            <h1>VPN Leak Test</h1>
+            <p>Comprehensive VPN leak detection system</p>
+          </div>
+        </div>
+
+        <div className="tool-info">
+          brought to you by <a href="https://datablackout.com">datablackout.com</a>
+          <p>React App - No Storage - <a href="https://github.com/mechanist01/vpn-leak-tester">Github Repository</a></p>
         </div>
       </div>
 
-      <div className="text-sm text-gray-600 mb-4 font-mono">
-        brought to you by <a href="https://datablackout.com" className="hover:underline">datablackout.com</a>
-        <p>React App - No Storage -<a href="https://github.com/mechanist01/vpn-leak-tester" className="underline"> Github Repository</a></p>
-      </div>
-
-      <div className="space-y-4 mb-6">
-        {Object.entries(tests).map(([testName, test]) => (
-          <div
-            key={testName}
-            className="p-4 bg-gray-50 rounded-lg border border-gray-200"
-          >
-            <div className="flex items-center gap-4 mb-2">
-              {getStatusIcon(test.status)}
-              <div className="flex-1">
-                <h3 className="font-mono font-medium uppercase tracking-wide">
-                  {testName} Test
-                </h3>
-                <p className="text-sm text-gray-600">{test.message}</p>
-              </div>
+      {Object.entries(tests).map(([testName, test]) => (
+        <div key={testName} className="tool-section terminal-style">
+          <div className="tool-header">
+            {getStatusIcon(test.status)}
+            <div>
+              <h3>{testName} Test</h3>
+              <p>{test.message}</p>
             </div>
-            {test.details.length > 0 && (
-              <div className="ml-9 mt-2 text-sm text-gray-600 font-mono">
-                {test.details.map((detail: string, index: number) => (
-                  <div key={index} className="mb-1">{detail}</div>
-                ))}
-              </div>
-            )}
           </div>
-        ))}
-      </div>
+          {test.details.length > 0 && (
+            <div className="test-details">
+              {test.details.map((detail: string, index: number) => (
+                <div key={index}>{detail}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
 
       {geoData.length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 className="font-mono font-medium uppercase tracking-wide mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            IP Location Map
-          </h3>
+        <div className="tool-section terminal-style">
+          <div className="tool-header">
+            <MapPin />
+            <h3>IP Location Map</h3>
+          </div>
           <IPLocationMap
             markers={geoData.map(loc => ({
               lat: loc.lat,
@@ -501,7 +474,7 @@ const VPNLeakTester: React.FC = () => {
               color: '#1f2937'
             }))}
           />
-          <div className="mt-4 space-y-2 text-sm text-gray-600 font-mono">
+          <div className="test-details">
             {geoData.map((loc, index) => (
               <div key={index}>
                 <div>IP: {loc.ip}</div>
@@ -514,7 +487,7 @@ const VPNLeakTester: React.FC = () => {
         </div>
       )}
 
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4">
         <AdvancedNetworkTests
           isRunning={isRunning}
           onTestComplete={handleAdvancedTestsComplete}
@@ -527,21 +500,19 @@ const VPNLeakTester: React.FC = () => {
       <button
         onClick={startAllTests}
         disabled={isRunning}
-        className={cn(
-          "w-full mb-6 px-4 py-2 font-mono uppercase tracking-wider text-white bg-black",
-          "rounded-md transition-colors duration-200",
-          "hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        )}
+        className="tool-button"
       >
         {isRunning ? 'Running All Tests...' : 'Start Complete VPN Test'}
       </button>
 
       {logs.length > 0 && (
-        <div className="mb-6 p-4 bg-black rounded-lg">
-          <h3 className="font-mono text-white mb-2 uppercase tracking-wide">Test Logs</h3>
-          <div className="font-mono text-xs space-y-1 max-h-[300px] overflow-y-auto">
+        <div className="tool-section terminal-style">
+          <div className="tool-header">
+            <h3>Test Logs</h3>
+          </div>
+          <div className="test-details">
             {logs.map((log, index) => (
-              <div key={index} className="text-gray-300">{log}</div>
+              <div key={index}>{log}</div>
             ))}
           </div>
         </div>
