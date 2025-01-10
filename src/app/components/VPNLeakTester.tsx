@@ -381,14 +381,19 @@ const VPNLeakTester: React.FC = () => {
           details: ipResult.ip ? [`Current IP: ${ipResult.ip}`, ...(ipResult.allIPs ? [`All IPs: ${ipResult.allIPs.join(', ')}`] : [])] : []
         }
       }));
+
+      // Only trigger advanced tests after all basic tests complete successfully
+      setShouldRunAdvanced(true);
     } catch (error) {
       addLog(`Error in basic tests: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsRunning(false);
+      setShouldRunAdvanced(false);
     }
   };
 
   const handleAdvancedTestsComplete = useCallback(() => {
     setIsRunning(false);
-    setShouldRunAdvanced(false);
+    setShouldRunAdvanced(false); // Reset advanced tests trigger
     addLog('All tests completed');
   }, [addLog]);
 
@@ -398,7 +403,7 @@ const VPNLeakTester: React.FC = () => {
     setIsRunning(true);
     setLogs([]);
     setGeoData([]);
-    setShouldRunAdvanced(false);
+    setShouldRunAdvanced(false); // Reset at start
 
     setTests({
       webRTC: { status: 'running', message: 'Testing WebRTC...', details: [] },
@@ -406,18 +411,23 @@ const VPNLeakTester: React.FC = () => {
       ipAddress: { status: 'running', message: 'Checking IP...', details: [] }
     });
 
-    await runBasicTests();
-    setShouldRunAdvanced(true);
+    try {
+      await runBasicTests();
+    } catch (error) {
+      setIsRunning(false);
+      setShouldRunAdvanced(false);
+      addLog(`Error starting tests: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const getStatusIcon = (status: TestStatus) => {
     switch (status) {
       case 'passed':
-        return <CheckCircle />;
+        return <CheckCircle className="text-green-500" />;
       case 'failed':
-        return <AlertTriangle />;
+        return <AlertTriangle className="text-red-500" />;
       case 'running':
-        return <Loader className="animate-spin"/>;
+        return <Loader className="animate-spin" />;
       default:
         return <RefreshCw />;
     }

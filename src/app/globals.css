@@ -100,7 +100,7 @@
   opacity: 0.8;
 }
 
-/* Updated to match result-block styling */
+/* All text is now base size */
 .tool-section {
   @apply bg-black shadow-lg p-6 mx-4 border border-white/10 text-white;
   background-color: #000000;
@@ -123,30 +123,28 @@
   @apply flex-1;
 }
 
-/* Updated to match result section heading style */
+/* Standardized text sizes */
 .tool-title, .test-heading {
-  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  @apply text-xl font-mono text-white font-bold tracking-wider uppercase;
   text-decoration: underline;
   margin-bottom: 1rem;
 }
 
-/* Updated to match result section text style */
-.tool-description, .test-status {
-  @apply text-xl;
+.tool-description, 
+.test-status,
+.tool-subtitle,
+.tool-links,
+.test-details,
+.result-block div,
+.result-section div {
+  @apply text-base;
   line-height: 1.5;
   font-family: var(--font-mono);
 }
 
-.tool-subtitle {
-  @apply text-xl mt-4;
-  line-height: 1.5;
-  font-family: var(--font-mono);
-}
-
+.tool-subtitle,
 .tool-links {
-  @apply text-xl mt-4;
-  line-height: 1.5;
-  font-family: var(--font-mono);
+  @apply mt-4;
 }
 
 .tool-links a {
@@ -164,14 +162,9 @@
 }
 
 .result-block h4 {
-  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  @apply text-xl font-mono text-white font-bold tracking-wider uppercase;
   text-decoration: underline;
   margin-bottom: 1rem;
-}
-
-.result-block div {
-  @apply text-xl;
-  line-height: 1.5;
 }
 
 .results-container {
@@ -184,15 +177,9 @@
 }
 
 .result-section h4 {
-  @apply text-3xl font-mono text-white font-bold tracking-wider uppercase;
+  @apply text-xl font-mono text-white font-bold tracking-wider uppercase;
   text-decoration: underline;
   margin-bottom: 1rem;
-}
-
-.result-section div {
-  @apply text-xl;
-  font-family: var(--font-mono);
-  line-height: 1.5;
 }
 
 ::selection {
@@ -202,10 +189,4 @@
 
 .space-y-4 > * + * {
   margin-top: 1rem;
-}
-
-.test-details {
-  @apply text-xl;
-  margin-top: 1rem;
-  line-height: 1.5;
 }

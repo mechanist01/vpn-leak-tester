@@ -26,7 +26,7 @@ interface NetworkConnection {
 interface AdvancedNetworkTestsProps {
     onTestComplete?: () => void;
     triggerTests?: boolean;
-    addLog?: (message: string) => void; // addLog is now optional
+    addLog?: (message: string) => void;
     isRunning?: boolean;
 }
 
@@ -292,11 +292,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         testFunction: () => Promise<TestResult> | TestResult,
         testKey: keyof AdvancedTestState
     ) => {
-        if (tests[testKey].status === 'passed' || tests[testKey].status === 'failed') {
-            return;
-        }
+        if (!isLocalRunning) return;
 
-         const initialState = tests[testKey];
+        const initialState = tests[testKey];
 
         try {
             setTests(prev => ({
@@ -304,7 +302,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 [testKey]: { status: 'running', message: 'Testing...', details: [] }
             }));
 
-             if (addLog) {
+            if (addLog) {
                 addLog(`Starting ${testKey} test`);
             }
 
@@ -315,7 +313,9 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 )
             ]);
 
-             if (addLog) {
+            if (!isLocalRunning) return;
+
+            if (addLog) {
                 addLog(`Finished ${testKey} test: ${result.message}`);
             }
 
@@ -323,13 +323,16 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 ...prev,
                 [testKey]: result
             }));
-             await delay(2000);
+
+            await delay(1000);
         } catch (error) {
+            if (!isLocalRunning) return;
+            
             console.error(`Error running test ${testKey}:`, error);
-              if (addLog) {
-                 addLog(`Error running ${testKey} test`);
-              }
-              setTests(prev => ({
+            if (addLog) {
+                addLog(`Error running ${testKey} test`);
+            }
+            setTests(prev => ({
                 ...prev,
                 [testKey]: {
                     status: 'error',
@@ -338,54 +341,47 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
                 }
             }));
         }
-    }, [tests, addLog]);
+    }, [tests, addLog, isLocalRunning]);
 
-    const runTests = useCallback(async () => {
-        if (!isLocalRunning) {
-            setIsLocalRunning(true);
+    const runAllTests = useCallback(async () => {
+        if (isLocalRunning) return;
+        
+        setIsLocalRunning(true);
+        if (addLog) {
+            addLog('Starting advanced network tests');
+        }
 
-             if (addLog) {
-                  addLog('Starting all tests');
-              }
-
-            const testFunctions = {
-                timezone: checkTimezoneLeaks,
-                network: checkNetworkInterfaces,
-                fingerprint: checkBrowserFingerprint,
-                traffic: analyzeTrafficPatterns
-            };
-
-            try {
-                for (const [key, func] of Object.entries(testFunctions)) {
-                    if (tests[key as keyof AdvancedTestState].status === 'pending') {
-                        await runTest(func, key as keyof AdvancedTestState);
-                    }
-                }
-            } finally {
-                setIsLocalRunning(false);
-                 if (addLog) {
-                   addLog('All tests completed');
-                  }
-                onTestComplete?.();
+        try {
+            await runTest(checkTimezoneLeaks, 'timezone');
+            await delay(1000);
+            await runTest(checkNetworkInterfaces, 'network');
+            await delay(1000);
+            await runTest(checkBrowserFingerprint, 'fingerprint');
+            await delay(1000);
+            await runTest(analyzeTrafficPatterns, 'traffic');
+        } finally {
+            setIsLocalRunning(false);
+            if (addLog) {
+                addLog('Advanced network tests completed');
             }
+            onTestComplete?.();
         }
     }, [
         isLocalRunning,
+        addLog,
+        runTest,
         checkTimezoneLeaks,
         checkNetworkInterfaces,
         checkBrowserFingerprint,
         analyzeTrafficPatterns,
-        tests,
-        runTest,
-        onTestComplete,
-        addLog
+        onTestComplete
     ]);
 
     useEffect(() => {
         if (triggerTests && !isRunning) {
-            void runTests();
+            void runAllTests();
         }
-    }, [triggerTests, isRunning, runTests]);
+    }, [triggerTests, isRunning, runAllTests]);
 
     const getStatusIcon = (status: TestResult['status']) => {
         switch (status) {
@@ -401,7 +397,7 @@ const AdvancedNetworkTests: React.FC<AdvancedNetworkTestsProps> = ({
         }
     };
 
-   return (
+    return (
         <div className="space-y-4">
             {Object.entries(tests).map(([testName, test]) => (
                 <div key={testName} className="tool-section terminal-style">
