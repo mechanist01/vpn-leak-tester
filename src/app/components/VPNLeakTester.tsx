@@ -46,13 +46,11 @@ const VPNLeakTester: React.FC = () => {
     ipAddress: { status: 'pending', message: 'Not tested', details: [] }
   });
   const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
   const [geoData, setGeoData] = useState<GeoLocation[]>([]);
   const [shouldRunAdvanced, setShouldRunAdvanced] = useState(false);
 
   const addLog = useCallback((message: string): void => {
     const timestamp = new Date().toLocaleTimeString();
-    setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
     console.log(`[${timestamp}] ${message}`);
   }, []);
 
@@ -392,7 +390,6 @@ const VPNLeakTester: React.FC = () => {
     }
 
     setIsRunning(true);
-    setLogs([]);
     setGeoData([]);
     addLog('Starting all tests...');
     // Start all tests immediately
