@@ -100,15 +100,14 @@
   opacity: 0.8;
 }
 
-/* All text is now base size */
 .tool-section {
-  @apply bg-black shadow-lg p-6 mx-4 border border-white/10 text-white;
+  @apply bg-black shadow-lg p-6 mx-0 border border-white/10 text-white w-full;
   background-color: #000000;
   margin-bottom: 1.5rem;
 }
 
 .tool-header {
-  @apply flex items-center gap-4 mb-6;
+  @apply flex items-center gap-4 mb-6 w-full;
 }
 
 .icon-container {

@@ -18,6 +18,7 @@ import type {
 } from './types';
 import IPLocationMap from './IPLocationMap';
 import TLSFingerprintTest from './TLSFingerprintTest';
+import InfoIcon, { TEST_INFO } from './InfoIcon';
 
 const DNS_SERVERS: DNSServer[] = [
   {
@@ -52,6 +53,7 @@ const VPNLeakTester: React.FC = () => {
   const addLog = useCallback((message: string): void => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+    console.log(`[${timestamp}] ${message}`);
   }, []);
 
   const checkWebRTCLeak = async (): Promise<EnhancedWebRTCResult> => {
@@ -104,7 +106,10 @@ const VPNLeakTester: React.FC = () => {
       pc.createDataChannel('connectivity_test');
 
       pc.createOffer()
-        .then(offer => pc.setLocalDescription(offer))
+        .then(offer => {
+          addLog('WebRTC offer created.');
+          return pc.setLocalDescription(offer);
+        })
         .catch(() => {
           pc.close();
           addLog('Error in WebRTC test');
@@ -154,32 +159,37 @@ const VPNLeakTester: React.FC = () => {
 
       for (const server of DNS_SERVERS) {
         try {
-          const [ipv4Response, ipv6Response] = await Promise.all([
-            fetch(`${server.endpoint}?name=${domain}&type=A`, {
-              headers: {
-                'Accept': 'application/dns-json'
-              },
-              credentials: 'omit'
-            }),
-            fetch(`${server.endpoint}?name=${domain}&type=AAAA`, {
-              headers: {
-                'Accept': 'application/dns-json'
-              },
-              credentials: 'omit'
-            })
-          ]);
+          addLog(`Fetching IPv4 for ${domain} from ${server.name}...`);
+          const ipv4Response = await fetch(`${server.endpoint}?name=${domain}&type=A`, {
+            headers: {
+              'Accept': 'application/dns-json'
+            },
+            credentials: 'omit'
+          });
+          addLog(`Fetching IPv6 for ${domain} from ${server.name}...`);
+          const ipv6Response = await fetch(`${server.endpoint}?name=${domain}&type=AAAA`, {
+            headers: {
+              'Accept': 'application/dns-json'
+            },
+            credentials: 'omit'
+          });
 
-          const [ipv4Data, ipv6Data] = await Promise.all([
-            ipv4Response.json(),
-            ipv6Response.json()
-          ]);
+
+          addLog(`Parsing IPv4 response for ${domain} from ${server.name}...`);
+          const ipv4Data = await ipv4Response.json();
+          addLog(`Parsing IPv6 response for ${domain} from ${server.name}...`);
+          const ipv6Data = await ipv6Response.json();
 
           const ipv4Addresses = ipv4Data.Answer?.map((a: DNSAnswer) => a.data) || [];
           const ipv6Addresses = ipv6Data.Answer?.map((a: DNSAnswer) => a.data) || [];
+          addLog(`IPv4 addresses for ${domain} from ${server.name}: ${ipv4Addresses.join(', ')}`);
+          addLog(`IPv6 addresses for ${domain} from ${server.name}: ${ipv6Addresses.join(', ')}`);
 
+          addLog(`Fetching reverse DNS for IPv4 addresses for ${domain} from ${server.name}...`);
           const reversePtrs = await Promise.all(
             ipv4Addresses.map(async (ip: string) => {
               try {
+                addLog(`Fetching reverse DNS for ${ip} from ${server.name}...`);
                 const ptrResponse = await fetch(
                   `${server.endpoint}?name=${ip.split('.').reverse().join('.')}.in-addr.arpa&type=PTR`,
                   {
@@ -187,13 +197,17 @@ const VPNLeakTester: React.FC = () => {
                     credentials: 'omit'
                   }
                 );
+                addLog(`Parsing reverse DNS response for ${ip} from ${server.name}...`);
                 const ptrData = await ptrResponse.json();
+                addLog(`Reverse DNS response for ${ip} from ${server.name} has Answer: ${Boolean(ptrData.Answer)}`);
                 return ptrData.Answer?.[0]?.data || null;
-              } catch {
+              } catch (error) {
+                addLog(`Error fetching reverse DNS for ${ip} from ${server.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 return null;
               }
             })
           );
+          addLog(`Reverse DNS records fetched for ${domain} from ${server.name}`);
 
           results.push({
             server: server.name,
@@ -206,6 +220,7 @@ const VPNLeakTester: React.FC = () => {
           addLog(`${server.name} resolved ${domain}:`);
           addLog(`IPv4: ${ipv4Addresses.join(', ')}`);
           addLog(`IPv6: ${ipv6Addresses.join(', ')}`);
+          addLog(`Reverse PTR: ${reversePtrs.filter(Boolean)[0] || 'None'}`);
         } catch (error) {
           addLog(`Error resolving ${domain} with ${server.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -219,24 +234,34 @@ const VPNLeakTester: React.FC = () => {
     };
 
     for (const domain of testDomains) {
+      addLog(`Analyzing DNS results for ${domain}...`);
       const domainResults = results.filter(r => r.domain === domain);
       const ipv4Sets = domainResults.map(r => new Set(r.ipv4));
       const ipv6Sets = domainResults.map(r => new Set(r.ipv6));
 
+      addLog(`Checking IPv4 consistency for ${domain}...`);
       leakAnalysis.inconsistentIPv4 = leakAnalysis.inconsistentIPv4 ||
         !ipv4Sets.every(set => set.size === ipv4Sets[0].size &&
           Array.from(set).every(ip => ipv4Sets[0].has(ip)));
+      addLog(`IPv4 consistency for ${domain}: ${!leakAnalysis.inconsistentIPv4}`);
 
+
+      addLog(`Checking IPv6 consistency for ${domain}...`);
       leakAnalysis.inconsistentIPv6 = leakAnalysis.inconsistentIPv6 ||
         !ipv6Sets.every(set => set.size === ipv6Sets[0].size &&
           Array.from(set).every(ip => ipv6Sets[0].has(ip)));
+      addLog(`IPv6 consistency for ${domain}: ${!leakAnalysis.inconsistentIPv6}`);
 
+
+      addLog(`Checking PTR consistency for ${domain}...`);
       const ptrs = domainResults.map(r => r.reversePtr).filter(Boolean);
       if (ptrs.length > 1) {
         leakAnalysis.mismatchedPtr = leakAnalysis.mismatchedPtr ||
           !ptrs.every(ptr => ptr === ptrs[0]);
+        addLog(`PTR consistency for ${domain}: ${!leakAnalysis.mismatchedPtr}`);
       }
     }
+    addLog(`DNS leak analysis completed: Inconsistent IPv4: ${leakAnalysis.inconsistentIPv4}, Inconsistent IPv6: ${leakAnalysis.inconsistentIPv6}, Mismatched PTR: ${leakAnalysis.mismatchedPtr}`);
 
     return {
       leaked: leakAnalysis.inconsistentIPv4 || leakAnalysis.inconsistentIPv6 || leakAnalysis.mismatchedPtr,
@@ -253,18 +278,24 @@ const VPNLeakTester: React.FC = () => {
     addLog('Starting comprehensive IP address check...');
 
     try {
+      addLog('Fetching IP addresses from various services...');
       const results: (IPServiceResult | null)[] = await Promise.all(
         IP_SERVICES.map(async service => {
           try {
+            addLog(`Fetching IP from ${service.name}...`);
             const response = await fetch(service.url);
+            addLog(`Response received from ${service.name}: ${response.status}`);
             if (service.name === 'icanhazip') {
               const ip = await response.text();
+              addLog(`IP address received from ${service.name}: ${ip.trim()}`);
               return { service: service.name, ip: ip.trim() };
             }
             const data = await response.json();
+            const ip = data.ip || data.address || data.query;
+            addLog(`IP address received from ${service.name}: ${ip}`);
             return {
               service: service.name,
-              ip: data.ip || data.address || data.query
+              ip
             };
           } catch (error) {
             addLog(`Error with ${service.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -276,9 +307,12 @@ const VPNLeakTester: React.FC = () => {
       const validResults = results.filter((result): result is IPServiceResult => result !== null);
 
       if (validResults.length === 0) {
+        addLog('No IP detection services available');
         throw new Error('No IP detection services available');
       }
+      addLog('IP addresses fetched successfully');
 
+      addLog('Checking consistency of IP addresses...');
       const uniqueIPs = new Set(validResults.map(r => r.ip));
       const ipConsistent = uniqueIPs.size === 1;
 
@@ -288,7 +322,10 @@ const VPNLeakTester: React.FC = () => {
           addLog(`${r.service}: ${r.ip}`);
         });
       }
+      addLog(`IP consistency: ${ipConsistent}`);
 
+
+      addLog('Fetching geolocation data for IP addresses...');
       const locationData = await Promise.all(
         Array.from(uniqueIPs).map(ip => getIpLocation(ip))
       );
@@ -297,6 +334,7 @@ const VPNLeakTester: React.FC = () => {
 
       const mainIP = validResults[0]?.ip;
       if (!mainIP) {
+        addLog('No valid IP found');
         throw new Error('No valid IP found');
       }
 
@@ -306,6 +344,8 @@ const VPNLeakTester: React.FC = () => {
         addLog(`ISP: ${loc.isp}`);
       });
 
+      addLog('IP address check completed successfully');
+
       return {
         ip: mainIP,
         allIPs: Array.from(uniqueIPs),
@@ -313,8 +353,8 @@ const VPNLeakTester: React.FC = () => {
         locations: locationData
       };
 
-    } catch {
-      addLog('Error in IP detection');
+    } catch (error) {
+      addLog(`Error in IP detection: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return { error: true };
     }
   };
@@ -323,11 +363,13 @@ const VPNLeakTester: React.FC = () => {
     addLog(`Fetching geolocation for IP: ${ip}`);
     try {
       const response = await fetch(`https://ipapi.co/${ip}/json/`);
+      addLog(`Response received for geolocation of ${ip}: ${response.status}`);
       if (!response.ok) {
+        addLog(`Failed to fetch location for IP: ${ip} (Status: ${response.status})`);
         throw new Error(`Failed to fetch location for IP: ${ip} (Status: ${response.status})`);
       }
       const data = await response.json();
-      return {
+      const result: GeoLocation = {
         ip,
         country: data.country_name || data.country,
         city: data.city,
@@ -335,75 +377,26 @@ const VPNLeakTester: React.FC = () => {
         lon: data.longitude,
         isp: data.org
       };
+      addLog(`Geolocation data received for ${ip}: ${JSON.stringify(result)}`);
+      return result;
     } catch (error) {
       addLog(`Error fetching geolocation for IP: ${ip}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   };
 
-  const runBasicTests = async () => {
-    try {
-      const webRTCResult = await checkWebRTCLeak();
-      setTests(prev => ({
-        ...prev,
-        webRTC: {
-          status: webRTCResult.leaked ? 'failed' : 'passed',
-          message: webRTCResult.leaked
-            ? 'WebRTC leak detected!'
-            : 'No WebRTC leaks detected',
-          details: [
-            `Total IPs found: ${webRTCResult.ips.length}`,
-            `Local IPs: ${webRTCResult.localIps?.join(', ') || 'None'}`,
-            `Public IPs: ${webRTCResult.publicIps?.join(', ') || 'None'}`,
-            `IPv6 IPs: ${webRTCResult.ipv6Ips?.join(', ') || 'None'}`
-          ]
-        }
-      }));
-
-      const dnsResult = await checkDNSLeaks();
-      setTests(prev => ({
-        ...prev,
-        dns: {
-          status: dnsResult.leaked ? 'failed' : 'passed',
-          message: dnsResult.message,
-          details: dnsResult.results.map(r =>
-            `${r.server}: ${r.domain} → IPv4: ${r.ipv4.join(', ')} | IPv6: ${r.ipv6.join(', ')}${r.reversePtr ? ` | PTR: ${r.reversePtr}` : ''}`
-          )
-        }
-      }));
-
-      const ipResult = await checkIPAddress();
-      setTests(prev => ({
-        ...prev,
-        ipAddress: {
-          status: ipResult.error ? 'error' : (ipResult.consistent ? 'passed' : 'failed'),
-          message: ipResult.error ? 'Error checking IP' : (ipResult.consistent ? 'IP address verified' : 'Inconsistent IPs detected'),
-          details: ipResult.ip ? [`Current IP: ${ipResult.ip}`, ...(ipResult.allIPs ? [`All IPs: ${ipResult.allIPs.join(', ')}`] : [])] : []
-        }
-      }));
-
-      // Only trigger advanced tests after all basic tests complete successfully
-      setShouldRunAdvanced(true);
-    } catch (error) {
-      addLog(`Error in basic tests: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsRunning(false);
-      setShouldRunAdvanced(false);
-    }
-  };
-
-  const handleAdvancedTestsComplete = useCallback(() => {
-    setIsRunning(false);
-    setShouldRunAdvanced(false); // Reset advanced tests trigger
-    addLog('All tests completed');
-  }, [addLog]);
-
   const startAllTests = async () => {
-    if (isRunning) return;
+    if (isRunning) {
+      addLog('Tests are already running. Ignoring start request.');
+      return;
+    }
 
     setIsRunning(true);
     setLogs([]);
     setGeoData([]);
-    setShouldRunAdvanced(false); // Reset at start
+    addLog('Starting all tests...');
+    // Start all tests immediately
+    setShouldRunAdvanced(true);
 
     setTests({
       webRTC: { status: 'running', message: 'Testing WebRTC...', details: [] },
@@ -412,34 +405,76 @@ const VPNLeakTester: React.FC = () => {
     });
 
     try {
-      await runBasicTests();
+      addLog('Running all tests in parallel.');
+      // Run all tests in parallel
+      const [webRTCResult, dnsResult, ipResult] = await Promise.all([
+        checkWebRTCLeak(),
+        checkDNSLeaks(),
+        checkIPAddress()
+      ]);
+      addLog('All tests completed. Updating UI.');
+
+      // Update all test results at once
+      setTests({
+        webRTC: {
+          status: webRTCResult.leaked ? 'failed' : 'passed',
+          message: webRTCResult.leaked ? 'WebRTC leak detected!' : 'No WebRTC leaks detected',
+          details: [
+            `Total IPs found: ${webRTCResult.ips.length}`,
+            `Local IPs: ${webRTCResult.localIps?.join(', ') || 'None'}`,
+            `Public IPs: ${webRTCResult.publicIps?.join(', ') || 'None'}`,
+            `IPv6 IPs: ${webRTCResult.ipv6Ips?.join(', ') || 'None'}`
+          ]
+        },
+        dns: {
+          status: dnsResult.leaked ? 'failed' : 'passed',
+          message: dnsResult.message,
+          details: dnsResult.results.map(r =>
+            `${r.server}: ${r.domain} → IPv4: ${r.ipv4.join(', ')} | IPv6: ${r.ipv6.join(', ')}${r.reversePtr ? ` | PTR: ${r.reversePtr}` : ''}`
+          )
+        },
+        ipAddress: {
+          status: ipResult.error ? 'error' : (ipResult.consistent ? 'passed' : 'failed'),
+          message: ipResult.error ? 'Error checking IP' : (ipResult.consistent ? 'IP address verified' : 'Inconsistent IPs detected'),
+          details: ipResult.ip ? [`Current IP: ${ipResult.ip}`, ...(ipResult.allIPs ? [`All IPs: ${ipResult.allIPs.join(', ')}`] : [])] : []
+        }
+      });
     } catch (error) {
+      addLog(`Error in tests: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsRunning(false);
       setShouldRunAdvanced(false);
-      addLog(`Error starting tests: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      addLog('All tests finished.');
+      setIsRunning(false);
     }
   };
+
+  const handleAdvancedTestsComplete = useCallback(() => {
+    setIsRunning(false);
+    setShouldRunAdvanced(false);
+    addLog('All tests completed');
+  }, [addLog]);
 
   const getStatusIcon = (status: TestStatus) => {
     switch (status) {
       case 'passed':
-        return <CheckCircle className="text-green-500" />;
+        return <CheckCircle className="text-green-500 w-6 h-6 shrink-0" />;
       case 'failed':
-        return <AlertTriangle className="text-red-500" />;
+        return <AlertTriangle className="text-red-500 w-6 h-6 shrink-0" />;
       case 'running':
-        return <Loader className="animate-spin" />;
+        return <Loader className="animate-spin w-6 h-6 shrink-0" />;
       default:
-        return <RefreshCw />;
+        return <RefreshCw className="w-6 h-6 shrink-0" />;
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="max-w-3xl mx-auto px-4 space-y-4">
       <div className="tool-section terminal-style">
         <div className="tool-header">
           <Shield />
           <div>
-            <h1>VPN Leak Test</h1>
+            <h1>VPN Leak Detector</h1>
             <p>Comprehensive VPN leak detection system</p>
           </div>
         </div>
@@ -450,17 +485,41 @@ const VPNLeakTester: React.FC = () => {
         </div>
       </div>
 
+      <button
+        onClick={startAllTests}
+        disabled={isRunning}
+        className="tool-button"
+      >
+        {isRunning ? 'Running All Tests...' : 'Start Complete VPN Test'}
+      </button>
+
       {Object.entries(tests).map(([testName, test]) => (
         <div key={testName} className="tool-section terminal-style">
-          <div className="tool-header">
-            {getStatusIcon(test.status)}
-            <div>
-              <h3>{testName} Test</h3>
-              <p>{test.message}</p>
+          <div className="tool-header flex justify-between items-start w-full">
+            <div className="flex items-center gap-2">
+              {getStatusIcon(test.status)}
+              <div>
+                <h3>
+                  {testName === 'webRTC' ? TEST_INFO.webRTC.title :
+                    testName === 'dns' ? TEST_INFO.dns.title :
+                      testName === 'ipAddress' ? TEST_INFO.ipAddress.title :
+                        `${testName} Test`}
+                </h3>
+                <p>{test.message}</p>
+              </div>
             </div>
+            {(testName === 'webRTC' ||
+              testName === 'dns' ||
+              testName === 'ipAddress') &&
+              <InfoIcon content={
+                testName === 'webRTC' ? TEST_INFO.webRTC.description :
+                  testName === 'dns' ? TEST_INFO.dns.description :
+                    TEST_INFO.ipAddress.description
+              } />
+            }
           </div>
           {test.details.length > 0 && (
-            <div className="test-details">
+            <div className="test-details max-h-48 overflow-y-auto">
               {test.details.map((detail: string, index: number) => (
                 <div key={index}>{detail}</div>
               ))}
@@ -506,26 +565,7 @@ const VPNLeakTester: React.FC = () => {
         <TLSFingerprintTest />
       </div>
 
-      <button
-        onClick={startAllTests}
-        disabled={isRunning}
-        className="tool-button"
-      >
-        {isRunning ? 'Running All Tests...' : 'Start Complete VPN Test'}
-      </button>
 
-      {logs.length > 0 && (
-        <div className="tool-section terminal-style">
-          <div className="tool-header">
-            <h3>Test Logs</h3>
-          </div>
-          <div className="test-details">
-            {logs.map((log, index) => (
-              <div key={index}>{log}</div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
